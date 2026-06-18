@@ -1,5 +1,0 @@
-[2026-06-18T18:25:09.528Z] GET http://localhost:5066/ → 200 (10ms, 7493B)
-[2026-06-18T18:25:09.544Z] GET https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap → pending (?ms, ?B)
-[2026-06-18T18:25:09.545Z] GET https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2 → pending (?ms, ?B)
-[2026-06-18T18:25:09.545Z] GET https://storbor.com/storbor-icon.png → pending (?ms, ?B)
-[2026-06-18T18:25:12.710Z] GET https://fonts.gstatic.com/s/nunito/v32/XRXV3I6Li01BKofINeaB.woff2 → pending (?ms, ?B)

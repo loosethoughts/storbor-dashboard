@@ -1,3 +1,0 @@
-{"ts":"2026-06-18T18:25:12.710Z","cmd":"goto","args":"http://localhost:5066","origin":"http://localhost:5066/","durationMs":3190,"status":"ok","hasCookies":false,"mode":"launched"}
-{"ts":"2026-06-18T18:25:12.865Z","cmd":"js","args":"document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';renderRamp(35);'ok'","origin":"http://localhost:5066/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
-{"ts":"2026-06-18T18:25:13.166Z","cmd":"screenshot","args":"C:/Users/shann/AppData/Local/Temp/ramp.png","origin":"http://localhost:5066/","durationMs":126,"status":"ok","hasCookies":false,"mode":"launched"}
