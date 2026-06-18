@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Storbor — Owner Dashboard</title>
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" type="image/png" href="https://storbor.com/storbor-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--blue:#0858F0;--cream:#F8EDE2;--ink:#14181F;--muted:#5b6470;--line:#e7e2da;--ok:#2E7D32;--warn:#C0392B}
+  *{box-sizing:border-box;margin:0}
+  body{font-family:'Nunito',system-ui,sans-serif;background:var(--cream);color:var(--ink);line-height:1.5}
+  a{color:var(--blue)}
+  /* login */
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 30px rgba(8,88,240,.08)}
+  #login .card{width:100%;max-width:380px;padding:30px}
+  #login h1{font-size:22px;color:var(--blue);margin-bottom:4px}
+  #login p{color:var(--muted);font-size:14px;margin-bottom:18px}
+  label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:10px 0 4px}
+  input{width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;font:inherit;outline:none}
+  input:focus{border-color:var(--blue)}
+  button{font-family:inherit;font-weight:800;cursor:pointer;border:none}
+  .btn{background:var(--blue);color:#fff;border-radius:999px;padding:12px 20px;font-size:15px}
+  .btn-sm{padding:8px 16px;font-size:13px}
+  .btn-ghost{background:transparent;color:var(--blue);border:2px solid var(--blue)}
+  .err{color:var(--warn);font-weight:700;font-size:13px;margin-top:10px;min-height:18px}
+  /* app */
+  #app{display:none}
+  header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .bar{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:12px}
+  .bar img{height:30px;width:30px;border-radius:8px}
+  .bar .t{font-weight:900;color:var(--blue);font-size:18px}
+  .bar .who{margin-left:auto;color:var(--muted);font-size:13px}
+  main{max-width:1200px;margin:0 auto;padding:20px}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:26px 0 10px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+  .kpi .v{font-size:26px;font-weight:900;color:var(--ink)}
+  .kpi .l{font-size:12.5px;color:var(--muted);font-weight:700;margin-top:2px}
+  .kpi .s{font-size:12px;color:var(--muted)}
+  .tablewrap{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:auto}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{background:#f7faff;font-weight:800;color:var(--muted);position:sticky;top:0}
+  td.num,th.num{text-align:right}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:800}
+  .pill.live,.pill.completed{background:#e7f5e9;color:var(--ok)}
+  .pill.draft,.pill.paused,.pill.cancelled{background:#f1f1f1;color:var(--muted)}
+  .pill.upcoming,.pill.in_progress{background:#e7efff;color:var(--blue)}
+  .yes{color:var(--ok);font-weight:800}.no{color:var(--muted)}
+  .muted{color:var(--muted)}
+  .empty{padding:18px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+  <div id="login">
+    <div class="card">
+      <h1>Storbor Owner Dashboard</h1>
+      <p>Authorized owners only.</p>
+      <label>Email</label>
+      <input id="email" type="email" autocomplete="username" placeholder="owners@storbor.com" />
+      <label>Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      <div style="margin-top:18px"><button class="btn" id="signin" style="width:100%">Sign in</button></div>
+      <div class="err" id="loginErr"></div>
+    </div>
+  </div>
+
+  <div id="app">
+    <header><div class="bar">
+      <img src="https://storbor.com/storbor-icon.png" alt="" />
+      <span class="t">Storbor</span><span class="muted">Owner Dashboard</span>
+      <span class="who" id="who"></span>
+      <button class="btn btn-sm btn-ghost" id="refresh">Refresh</button>
+      <button class="btn btn-sm" id="logout">Log out</button>
+    </div></header>
+    <main>
+      <div class="kpis" id="kpis"></div>
+      <h2>Users <span id="uCount" class="muted"></span></h2>
+      <div class="tablewrap"><table id="usersTbl"></table></div>
+      <h2>Listings (posts) <span id="lCount" class="muted"></span></h2>
+      <div class="tablewrap"><table id="listingsTbl"></table></div>
+      <h2>Transactions (bookings) <span id="bCount" class="muted"></span></h2>
+      <div class="tablewrap"><table id="bookingsTbl"></table></div>
+      <h2>Website waitlist sign-ups <span id="wCount" class="muted"></span></h2>
+      <div class="tablewrap"><table id="waitlistTbl"></table></div>
+      <p class="muted" style="margin:24px 0;font-size:12px">Storbor Inc. · live data from the platform. Refreshed <span id="ts"></span>.</p>
+    </main>
+  </div>
+
+<script>
+const SB_URL='https://txixixtomasupnytvfch.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4aXhpeHRvbWFzdXBueXR2ZmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NjU1NjksImV4cCI6MjA5NjQ0MTU2OX0.Gvsp6mA97ms4tnYcNa02QhTedULAJ80zG1wD3s8lm3U';
+const sb=supabase.createClient(SB_URL,SB_ANON);
+const $=id=>document.getElementById(id);
+const cad=new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD'});
+const money=v=>cad.format(Number(v||0));
+const date=v=>v?new Date(v).toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'}):'—';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pill=s=>`<span class="pill ${s}">${s||'—'}</span>`;
+
+async function isAdmin(){ const {data,error}=await sb.rpc('is_admin'); return !error && data===true; }
+
+async function showAppIfAdmin(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session) return false;
+  if(!(await isAdmin())){ await sb.auth.signOut(); return false; }
+  $('who').textContent=session.user.email;
+  $('login').style.display='none'; $('app').style.display='block';
+  await loadAll();
+  return true;
+}
+
+$('signin').onclick=async()=>{
+  $('loginErr').textContent='';
+  const email=$('email').value.trim(), password=$('password').value;
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){ $('loginErr').textContent=error.message; return; }
+  if(!(await showAppIfAdmin())){ $('loginErr').textContent='This account is not an authorized owner.'; }
+};
+$('password').addEventListener('keydown',e=>{if(e.key==='Enter')$('signin').click();});
+$('logout').onclick=async()=>{ await sb.auth.signOut(); location.reload(); };
+$('refresh').onclick=loadAll;
+
+function renderTable(el, cols, rows, emptyMsg){
+  if(!rows.length){ el.outerHTML=`<table id="${el.id}"><tr><td class="empty">${emptyMsg}</td></tr></table>`; return; }
+  let h='<tr>'+cols.map(c=>`<th class="${c.num?'num':''}">${c.h}</th>`).join('')+'</tr>';
+  h+=rows.map(r=>'<tr>'+cols.map(c=>`<td class="${c.num?'num':''}">${c.f(r)}</td>`).join('')+'</tr>').join('');
+  el.innerHTML=h;
+}
+
+async function loadAll(){
+  const [usersR, listingsR, bookingsR, waitlistR] = await Promise.all([
+    sb.rpc('admin_user_list'),
+    sb.from('listings').select('*').order('created_at',{ascending:false}),
+    sb.from('bookings').select('*').order('created_at',{ascending:false}),
+    sb.from('waitlist').select('*').order('created_at',{ascending:false}),
+  ]);
+  const users=usersR.data||[], listings=listingsR.data||[], bookings=bookingsR.data||[], waitlist=waitlistR.data||[];
+  const nameById={}; users.forEach(u=>nameById[u.id]=u.preferred_name||u.email||u.id.slice(0,8));
+  const titleById={}; listings.forEach(l=>titleById[l.id]=l.title);
+
+  // KPIs
+  const verified=users.filter(u=>u.id_verified).length;
+  const smsOn=users.filter(u=>u.sms_consent).length;
+  const live=listings.filter(l=>l.status==='live').length;
+  const paid=bookings.filter(b=>b.stripe_payment_intent_id);
+  const gmv=bookings.reduce((s,b)=>s+Number(b.subtotal||0),0);
+  const rev=bookings.reduce((s,b)=>s+Number(b.commission||0),0);
+  const kpi=(v,l,s)=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
+  $('kpis').innerHTML=
+    kpi(users.length,'Users',`${verified} ID-verified`)+
+    kpi(smsOn,'SMS opt-ins','of '+users.length+' users')+
+    kpi(listings.length,'Listings',live+' live')+
+    kpi(bookings.length,'Bookings',paid.length+' paid')+
+    kpi(money(gmv),'GMV (booked)','')+
+    kpi(money(rev),'Commission','')+
+    kpi(waitlist.length,'Waitlist','website sign-ups');
+
+  $('uCount').textContent='('+users.length+')';
+  $('lCount').textContent='('+listings.length+')';
+  $('bCount').textContent='('+bookings.length+')';
+  $('wCount').textContent='('+waitlist.length+')';
+
+  renderTable($('usersTbl'),[
+    {h:'Name',f:u=>esc(u.preferred_name||'—')},
+    {h:'Email',f:u=>esc(u.email||'—')},
+    {h:'Phone',f:u=>esc(u.phone||'—')},
+    {h:'Verified',f:u=>u.id_verified?'<span class="yes">Yes</span>':'<span class="no">No</span>'},
+    {h:'SMS',f:u=>u.sms_consent?'<span class="yes">Yes</span>':'<span class="no">—</span>'},
+    {h:'Joined',f:u=>date(u.created_at)},
+  ],users,'No users yet.');
+
+  renderTable($('listingsTbl'),[
+    {h:'Title',f:l=>esc(l.title)},
+    {h:'Area',f:l=>esc(l.approx_area||'—')},
+    {h:'Custodian',f:l=>esc(nameById[l.custodian_id]||'—')},
+    {h:'Status',f:l=>pill(l.status)},
+    {h:'$/hr',num:1,f:l=>money(l.price_hour)},
+    {h:'Created',f:l=>date(l.created_at)},
+  ],listings,'No listings yet.');
+
+  renderTable($('bookingsTbl'),[
+    {h:'Date',f:b=>date(b.created_at)},
+    {h:'Listing',f:b=>esc(titleById[b.listing_id]||'—')},
+    {h:'Renter',f:b=>esc(nameById[b.renter_id]||'—')},
+    {h:'Custodian',f:b=>esc(nameById[b.custodian_id]||'—')},
+    {h:'Status',f:b=>pill(b.status)},
+    {h:'Subtotal',num:1,f:b=>money(b.subtotal)},
+    {h:'Paid',f:b=>b.stripe_payment_intent_id?'<span class="yes">Yes</span>':'<span class="no">—</span>'},
+  ],bookings,'No bookings yet.');
+
+  renderTable($('waitlistTbl'),[
+    {h:'Email',f:w=>esc(w.email)},
+    {h:'Role',f:w=>esc(w.role||'—')},
+    {h:'Source',f:w=>esc(w.source||'—')},
+    {h:'Date',f:w=>date(w.created_at)},
+  ],waitlist,'No waitlist sign-ups yet.');
+
+  $('ts').textContent=new Date().toLocaleString('en-CA');
+}
+
+showAppIfAdmin();
+</script>
+</body>
+</html>
