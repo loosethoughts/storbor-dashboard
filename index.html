@@ -27,6 +27,7 @@
   .btn{background:var(--blue);color:#fff;border-radius:999px;padding:12px 20px;font-size:15px}
   .btn-sm{padding:8px 16px;font-size:13px}
   .btn-ghost{background:transparent;color:var(--blue);border:2px solid var(--blue)}
+  .csvbtn{margin-left:auto;background:#fff;border:1px solid var(--line);color:var(--blue);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer}
   .err{color:var(--warn);font-weight:700;font-size:13px;margin-top:10px;min-height:18px}
   /* app */
   #app{display:none}
@@ -36,7 +37,7 @@
   .bar .t{font-weight:900;color:var(--blue);font-size:18px}
   .bar .who{margin-left:auto;color:var(--muted);font-size:13px}
   main{max-width:1200px;margin:0 auto;padding:20px}
-  h2{font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:26px 0 10px}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:26px 0 10px;display:flex;align-items:center;gap:8px}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
   .kpi .v{font-size:26px;font-weight:900;color:var(--ink)}
@@ -75,21 +76,35 @@
       <img src="https://storbor.com/storbor-icon.png" alt="" />
       <span class="t">Storbor</span><span class="muted">Owner Dashboard</span>
       <span class="who" id="who"></span>
+      <button class="btn btn-sm btn-ghost" id="changepw">Change password</button>
       <button class="btn btn-sm btn-ghost" id="refresh">Refresh</button>
       <button class="btn btn-sm" id="logout">Log out</button>
     </div></header>
     <main>
       <div class="kpis" id="kpis"></div>
-      <h2>Users <span id="uCount" class="muted"></span></h2>
+      <h2>Users <span id="uCount" class="muted"></span><button class="csvbtn" data-csv="users">⬇ CSV</button></h2>
       <div class="tablewrap"><table id="usersTbl"></table></div>
-      <h2>Listings (posts) <span id="lCount" class="muted"></span></h2>
+      <h2>Listings (posts) <span id="lCount" class="muted"></span><button class="csvbtn" data-csv="listings">⬇ CSV</button></h2>
       <div class="tablewrap"><table id="listingsTbl"></table></div>
-      <h2>Transactions (bookings) <span id="bCount" class="muted"></span></h2>
+      <h2>Transactions (bookings) <span id="bCount" class="muted"></span><button class="csvbtn" data-csv="bookings">⬇ CSV</button></h2>
       <div class="tablewrap"><table id="bookingsTbl"></table></div>
-      <h2>Website waitlist sign-ups <span id="wCount" class="muted"></span></h2>
+      <h2>Website waitlist sign-ups <span id="wCount" class="muted"></span><button class="csvbtn" data-csv="waitlist">⬇ CSV</button></h2>
       <div class="tablewrap"><table id="waitlistTbl"></table></div>
       <p class="muted" style="margin:24px 0;font-size:12px">Storbor Inc. · live data from the platform. Refreshed <span id="ts"></span>.</p>
     </main>
+    <div id="pwModal" style="display:none;position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:50;align-items:center;justify-content:center;padding:20px">
+      <div class="card" style="max-width:360px;width:100%;padding:24px">
+        <h1 style="font-size:18px;color:var(--blue);margin-bottom:2px">Change password</h1>
+        <p class="muted" style="font-size:13px" id="pwWho"></p>
+        <label>New password</label><input id="newpw" type="password" autocomplete="new-password" placeholder="At least 6 characters" />
+        <label>Confirm new password</label><input id="newpw2" type="password" autocomplete="new-password" />
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn" id="pwSave" style="flex:1">Save</button>
+          <button class="btn btn-ghost" id="pwCancel">Cancel</button>
+        </div>
+        <div class="err" id="pwMsg"></div>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -102,6 +117,7 @@ const money=v=>cad.format(Number(v||0));
 const date=v=>v?new Date(v).toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'}):'—';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pill=s=>`<span class="pill ${s}">${s||'—'}</span>`;
+let NAME={}, TITLE={}, DATA={};
 
 async function isAdmin(){ const {data,error}=await sb.rpc('is_admin'); return !error && data===true; }
 
@@ -143,6 +159,7 @@ async function loadAll(){
   const users=usersR.data||[], listings=listingsR.data||[], bookings=bookingsR.data||[], waitlist=waitlistR.data||[];
   const nameById={}; users.forEach(u=>nameById[u.id]=u.preferred_name||u.email||u.id.slice(0,8));
   const titleById={}; listings.forEach(l=>titleById[l.id]=l.title);
+  NAME=nameById; TITLE=titleById; DATA={users,listings,bookings,waitlist};
 
   // KPIs
   const verified=users.filter(u=>u.id_verified).length;
@@ -203,6 +220,39 @@ async function loadAll(){
 
   $('ts').textContent=new Date().toLocaleString('en-CA');
 }
+
+// ---- CSV export ----
+const CSVCOLS={
+  users:[['Name',r=>r.preferred_name],['Email',r=>r.email],['Phone',r=>r.phone],['Verified',r=>r.id_verified?'yes':'no'],['SMS consent',r=>r.sms_consent?'yes':'no'],['Joined',r=>r.created_at]],
+  listings:[['Title',r=>r.title],['Area',r=>r.approx_area],['Custodian',r=>NAME[r.custodian_id]],['Status',r=>r.status],['Price/hr',r=>r.price_hour],['Created',r=>r.created_at]],
+  bookings:[['Date',r=>r.created_at],['Listing',r=>TITLE[r.listing_id]],['Renter',r=>NAME[r.renter_id]],['Custodian',r=>NAME[r.custodian_id]],['Status',r=>r.status],['Subtotal',r=>r.subtotal],['Commission',r=>r.commission],['Paid',r=>r.stripe_payment_intent_id?'yes':'no'],['Start',r=>r.start_at],['End',r=>r.end_at]],
+  waitlist:[['Email',r=>r.email],['Role',r=>r.role],['Source',r=>r.source],['Date',r=>r.created_at]],
+};
+const csvCell=v=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+function exportCSV(t){
+  const rows=DATA[t]||[], cols=CSVCOLS[t]; if(!cols) return;
+  const lines=[cols.map(c=>c[0]).join(',')].concat(rows.map(r=>cols.map(c=>csvCell(c[1](r))).join(',')));
+  const blob=new Blob([lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='storbor-'+t+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+document.querySelectorAll('.csvbtn').forEach(b=>b.addEventListener('click',()=>exportCSV(b.dataset.csv)));
+
+// ---- change password ----
+$('changepw').onclick=async()=>{ const {data:{session}}=await sb.auth.getSession(); $('pwWho').textContent='For '+(session?.user?.email||''); $('newpw').value=''; $('newpw2').value=''; $('pwMsg').textContent=''; $('pwMsg').style.color=''; $('pwModal').style.display='flex'; };
+$('pwCancel').onclick=()=>{ $('pwModal').style.display='none'; };
+$('pwSave').onclick=async()=>{
+  const a=$('newpw').value, b=$('newpw2').value; $('pwMsg').style.color='';
+  if(a.length<6){ $('pwMsg').textContent='Use at least 6 characters.'; return; }
+  if(a!==b){ $('pwMsg').textContent='Passwords do not match.'; return; }
+  $('pwSave').disabled=true;
+  const {error}=await sb.auth.updateUser({password:a});
+  $('pwSave').disabled=false;
+  if(error){ $('pwMsg').textContent=error.message; return; }
+  $('pwMsg').style.color='#2E7D32'; $('pwMsg').textContent='Password updated.';
+  setTimeout(()=>{ $('pwModal').style.display='none'; }, 1200);
+};
 
 showAppIfAdmin();
 </script>
