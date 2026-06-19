@@ -89,8 +89,8 @@
         <div id="rampLegend" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:6px;font-size:12.5px;font-weight:700;color:var(--muted)"></div>
         <p class="muted" style="font-size:11.5px;margin:10px 0 6px">
           Model: $60 avg GMV/renter·mo, 4:1 renter:custodian, monthly EBITDA after Stripe (2.9%+$0.30), a 1% refund reserve,
-          marketing at 15% of net revenue, and the Stage-3 paid-team cost base (~$20k/mo). “Current” = 13% commission only
-          (net take ≈ 8.5% of GMV); “Recommended” adds an ~8% renter service fee (net take ≈ 16%). See
+          marketing at 15% of net revenue, and the Stage-3 paid-team cost base (~$20k/mo). “Adopted” = 13% commission + an
+          8% all-in renter service fee (net take ≈ 16% of GMV); the lighter line shows commission only (≈ 8.5%) for comparison. See
           <span style="color:var(--ink)">Storbor-Break-Even-and-Profitability</span> for the full model.
         </p>
       </div>
@@ -282,16 +282,16 @@ function renderRamp(current){
     g+=`<circle cx="${x.toFixed(1)}" cy="${yz.toFixed(1)}" r="4.5" fill="#fff" stroke="${c}" stroke-width="2.5"/>`;
     g+=`<text x="${x.toFixed(1)}" y="${(T+12).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="${c}" font-weight="800">${(n/1000).toFixed(1)}k</text>`;
   });
-  // "you are here"
-  const cx=X(Math.min(current,XMAX)), cy=Y(ebitda(Math.min(current,XMAX),RAMP.takeCur));
+  // "you are here" — on the adopted model (13% commission + 8% renter fee)
+  const cx=X(Math.min(current,XMAX)), cy=Y(ebitda(Math.min(current,XMAX),RAMP.takeRec));
   g+=`<line x1="${cx.toFixed(1)}" y1="${T}" x2="${cx.toFixed(1)}" y2="${T+plotH}" stroke="#14181F" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>`;
   g+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="5" fill="#14181F"/>`;
   const lblY = cy < T+40 ? cy+22 : cy-12;
   g+=`<text x="${(cx+8).toFixed(1)}" y="${lblY.toFixed(1)}" font-size="11" fill="#14181F" font-weight="800">You are here · ${current} renter${current===1?'':'s'}</text>`;
   $('rampChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="Nunito,system-ui,sans-serif">${g}</svg>`;
   $('rampLegend').innerHTML=
-    `<span><span style="display:inline-block;width:14px;height:3px;background:#0858F0;vertical-align:middle;margin-right:6px"></span>Current — 13% commission (~8.5% net take)</span>`+
-    `<span><span style="display:inline-block;width:14px;height:3px;background:#2E7D32;vertical-align:middle;margin-right:6px"></span>Recommended — 13% + ~8% renter fee (~16% net take)</span>`+
+    `<span><span style="display:inline-block;width:14px;height:3px;background:#2E7D32;vertical-align:middle;margin-right:6px"></span>Adopted — 13% commission + 8% renter fee (~16% net take)</span>`+
+    `<span><span style="display:inline-block;width:14px;height:3px;background:#0858F0;vertical-align:middle;margin-right:6px"></span>Commission only, no renter fee (~8.5% net take)</span>`+
     `<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed #C0392B;vertical-align:middle;margin-right:6px"></span>Break-even</span>`;
 }
 
