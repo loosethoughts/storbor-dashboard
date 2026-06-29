@@ -101,6 +101,9 @@
       <div class="tablewrap"><table id="listingsTbl"></table></div>
       <h2>Transactions (bookings) <span id="bCount" class="muted"></span><button class="csvbtn" data-csv="bookings">⬇ CSV</button></h2>
       <div class="tablewrap"><table id="bookingsTbl"></table></div>
+      <h2>Vital records <span id="rCount" class="muted"></span><button class="csvbtn" data-csv="records">⬇ CSV</button></h2>
+      <p class="muted" style="margin:-4px 0 10px;text-transform:none;letter-spacing:0;font-weight:600">Policy acceptances (signup / listing / purchase), payments, check-in &amp; check-out, drop-off approvals, weekly check-ups posted / signed / <span style="color:#c0392b">missed</span>, and cancellations — retrievable for compliance &amp; disputes.</p>
+      <div class="tablewrap"><table id="recordsTbl"></table></div>
       <h2>Website waitlist sign-ups <span id="wCount" class="muted"></span><button class="csvbtn" data-csv="waitlist">⬇ CSV</button></h2>
       <div class="tablewrap"><table id="waitlistTbl"></table></div>
       <p class="muted" style="margin:24px 0;font-size:12px">Storbor Inc. · live data from the platform. Refreshed <span id="ts"></span>.</p>
@@ -162,17 +165,23 @@ function renderTable(el, cols, rows, emptyMsg){
   el.innerHTML=h;
 }
 
+const RECORD_LABEL={account_created:'Account created',policy_accepted:'Policy accepted',listing_created:'Listing created',booking_created:'Booking created',payment:'Payment',checkin:'Check-in (drop-off)',checkout:'Check-out (pick-up)',checkin_approved:'Drop-off approved',checkup_posted:'Check-up posted',checkup_signed:'Check-up signed off',checkup_missed:'Check-up MISSED',cancellation:'Cancellation'};
+function recordLabel(t){return RECORD_LABEL[t]||t;}
+function recordDetail(r){const d=r.detail||{};const parts=[];if(d.context)parts.push(d.context);if(d.ref)parts.push(d.ref);if(d.title)parts.push(d.title);if(d.rental_mode)parts.push(d.rental_mode);if(d.amount)parts.push('$'+d.amount);if(d.photos!=null)parts.push(d.photos+' photo'+(d.photos===1?'':'s'));if(d.cycle!=null)parts.push('week '+d.cycle);if(d.method)parts.push(d.method);return parts.join(' · ')||'';}
+
 async function loadAll(){
-  const [usersR, listingsR, bookingsR, waitlistR] = await Promise.all([
+  const [usersR, listingsR, bookingsR, waitlistR, recordsR] = await Promise.all([
     sb.rpc('admin_user_list'),
     sb.from('listings').select('*').order('created_at',{ascending:false}),
     sb.from('bookings').select('*').order('created_at',{ascending:false}),
     sb.from('waitlist').select('*').order('created_at',{ascending:false}),
+    sb.from('audit_events').select('*').order('created_at',{ascending:false}).limit(1000),
   ]);
-  const users=usersR.data||[], listings=listingsR.data||[], bookings=bookingsR.data||[], waitlist=waitlistR.data||[];
+  const users=usersR.data||[], listings=listingsR.data||[], bookings=bookingsR.data||[], waitlist=waitlistR.data||[], records=recordsR.data||[];
   const nameById={}; users.forEach(u=>nameById[u.id]=u.preferred_name||u.email||u.id.slice(0,8));
   const titleById={}; listings.forEach(l=>titleById[l.id]=l.title);
-  NAME=nameById; TITLE=titleById; DATA={users,listings,bookings,waitlist};
+  const refById={}; bookings.forEach(b=>refById[b.id]=b.ref||b.id.slice(0,8));
+  NAME=nameById; TITLE=titleById; DATA={users,listings,bookings,waitlist,records};
 
   // KPIs
   const verified=users.filter(u=>u.id_verified).length;
@@ -194,6 +203,7 @@ async function loadAll(){
   $('uCount').textContent='('+users.length+')';
   $('lCount').textContent='('+listings.length+')';
   $('bCount').textContent='('+bookings.length+')';
+  $('rCount').textContent='('+records.length+')';
   $('wCount').textContent='('+waitlist.length+')';
 
   renderTable($('usersTbl'),[
@@ -223,6 +233,14 @@ async function loadAll(){
     {h:'Subtotal',num:1,f:b=>money(b.subtotal)},
     {h:'Paid',f:b=>b.stripe_payment_intent_id?'<span class="yes">Yes</span>':'<span class="no">—</span>'},
   ],bookings,'No bookings yet.');
+
+  renderTable($('recordsTbl'),[
+    {h:'When',f:r=>date(r.created_at)},
+    {h:'Event',f:r=>r.type==='checkup_missed'?'<span class="no">'+esc(recordLabel(r.type))+'</span>':esc(recordLabel(r.type))},
+    {h:'Who',f:r=>esc(r.actor_id?(nameById[r.actor_id]||r.actor_id.slice(0,8)):'system')},
+    {h:'Booking',f:r=>esc(r.booking_id?(refById[r.booking_id]||r.booking_id.slice(0,8)):(r.listing_id?(titleById[r.listing_id]||'listing'):'—'))},
+    {h:'Detail',f:r=>esc(recordDetail(r))},
+  ],records,'No records yet.');
 
   renderTable($('waitlistTbl'),[
     {h:'Email',f:w=>esc(w.email)},
@@ -301,6 +319,7 @@ const CSVCOLS={
   listings:[['Title',r=>r.title],['Area',r=>r.approx_area],['Custodian',r=>NAME[r.custodian_id]],['Status',r=>r.status],['Price/hr',r=>r.price_hour],['Created',r=>r.created_at]],
   bookings:[['Date',r=>r.created_at],['Listing',r=>TITLE[r.listing_id]],['Renter',r=>NAME[r.renter_id]],['Custodian',r=>NAME[r.custodian_id]],['Status',r=>r.status],['Subtotal',r=>r.subtotal],['Commission',r=>r.commission],['Paid',r=>r.stripe_payment_intent_id?'yes':'no'],['Start',r=>r.start_at],['End',r=>r.end_at]],
   waitlist:[['Email',r=>r.email],['Role',r=>r.role],['Source',r=>r.source],['Date',r=>r.created_at]],
+  records:[['When',r=>r.created_at],['Event',r=>recordLabel(r.type)],['Type',r=>r.type],['Who',r=>r.actor_id?(NAME[r.actor_id]||r.actor_id):'system'],['Booking',r=>r.booking_id||''],['Listing',r=>r.listing_id||''],['Detail',r=>JSON.stringify(r.detail||{})]],
 };
 const csvCell=v=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
 function exportCSV(t){
