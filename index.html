@@ -216,7 +216,7 @@ async function loadAll(){
   renderTable($('usersTbl'),[
     {h:'Name',f:u=>esc(u.preferred_name||'—')},
     {h:'Email',f:u=>esc(u.email||'—')},
-    {h:'Phone',f:u=>esc(u.phone||'—')},
+    {h:'Phone',f:u=>{if(!u.phone)return '—';const t=u.phone.replace(/[^\d+]/g,'');return '<a href="tel:'+t+'">'+esc(u.phone)+'</a> · <a href="sms:'+t+'">text</a>';}},
     {h:'Verified',f:u=>u.id_verified?'<span class="yes">Yes</span>':'<span class="no">No</span>'},
     {h:'SMS',f:u=>u.sms_consent?'<span class="yes">Yes</span>':'<span class="no">—</span>'},
     {h:'Platform',f:u=>esc(platLabel(u.id))},
